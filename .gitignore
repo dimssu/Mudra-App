@@ -2,3 +2,5 @@ node_modules
 dist
 logs
 .env
+oauth-f6bd6-firebase-adminsdk-fbsvc-a2e612793f.json
+*.firebase-adminsdk-*.json

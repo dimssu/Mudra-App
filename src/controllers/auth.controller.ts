@@ -3,43 +3,37 @@ import { STATUS_CODES } from '../constants/statusCodes';
 import AuthService from '../services/auth.service';
 
 export class AuthController {
-  static async getAccessWithGoogle(req: Request, res: Response){
-    try{
+  static async getAccessWithGoogle(req: Request, res: Response) {
+    try {
       const { idToken } = req.body;
-      const result = await AuthService.getAccessWithGoogle(idToken)
-      res.status(STATUS_CODES.SUCCESS).json(result)
-    }catch(error: any){
-      res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: error.message })
+      const appId = req.appConfig!.appId;
+      const result = await AuthService.getAccessWithGoogle(idToken, appId);
+      res.status(STATUS_CODES.SUCCESS).json(result);
+    } catch (error: any) {
+      res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
   }
 
   static async register(req: Request, res: Response) {
     try {
-      const { 
-        email, 
-        password, 
-        userName, 
-        first_name, 
-        last_name, 
-        profile_picture_url, 
-        phone_number 
-      } = req.body;
-      
-      const userData = {
+      const {
+        email,
+        password,
         userName,
         first_name,
         last_name,
         profile_picture_url,
-        phone_number
-      };
-      
-      const result = await AuthService.register(email, password, userData);
+        phone_number,
+      } = req.body;
+
+      const appId = req.appConfig!.appId;
+      const userData = { userName, first_name, last_name, profile_picture_url, phone_number };
+      const result = await AuthService.register(email, password, appId, userData);
       res.status(STATUS_CODES.SUCCESS).json(result);
     } catch (error: any) {
-      if(error.name == "ValidationError"){
-        return res.status(STATUS_CODES.BAD_REQUEST).json({ error: error.message})
+      if (error.name === 'ValidationError') {
+        return res.status(STATUS_CODES.BAD_REQUEST).json({ error: error.message });
       }
-
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
   }
@@ -47,7 +41,8 @@ export class AuthController {
   static async login(req: Request, res: Response) {
     try {
       const { email, password } = req.body;
-      const result = await AuthService.login(email, password);
+      const appId = req.appConfig!.appId;
+      const result = await AuthService.login(email, password, appId);
       res.status(STATUS_CODES.SUCCESS).json(result);
     } catch (error: any) {
       res.status(STATUS_CODES.UNAUTHORIZED).json({ error: error.message });
@@ -57,7 +52,8 @@ export class AuthController {
   static async refreshToken(req: Request, res: Response) {
     try {
       const { refreshToken } = req.body;
-      const result = await AuthService.refreshToken(refreshToken);
+      const appId = req.appConfig!.appId;
+      const result = await AuthService.refreshToken(refreshToken, appId);
       res.status(STATUS_CODES.SUCCESS).json(result);
     } catch (error: any) {
       res.status(STATUS_CODES.UNAUTHORIZED).json({ error: error.message });
@@ -67,10 +63,11 @@ export class AuthController {
   static async logout(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
+      const appId = req.user?.appId || req.appConfig!.appId;
       if (!userId) {
         return res.status(STATUS_CODES.UNAUTHORIZED).json({ error: 'Unauthorized' });
       }
-      await AuthService.logout(userId);
+      await AuthService.logout(userId, appId);
       res.status(STATUS_CODES.SUCCESS).json({ message: 'Logged out successfully' });
     } catch (error: any) {
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: error.message });
@@ -79,18 +76,19 @@ export class AuthController {
 
   static async verifyToken(req: Request, res: Response) {
     try {
-      const accessToken  = req.headers.authorization;
+      const accessToken = req.headers.authorization;
       if (!accessToken) {
         return res.status(STATUS_CODES.NOT_FOUND).json({ error: 'Access token not provided' });
       }
-
       const token = accessToken.split(' ')[1];
-
       const decodedToken = await AuthService.verifyToken(token);
-      
-      res.status(STATUS_CODES.SUCCESS).json({ verified: true, decodedToken, message: 'Token verified successfully' });
+      res.status(STATUS_CODES.SUCCESS).json({
+        verified: true,
+        decodedToken,
+        message: 'Token verified successfully',
+      });
     } catch (error: any) {
       res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ verified: false, error: error.message });
     }
   }
-} 
+}

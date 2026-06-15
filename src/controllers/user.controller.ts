@@ -34,8 +34,9 @@ export class UserController {
       const userId = req.params.id;
       const updateData = req.body;
       
-      // Check if the user is an admin
-      const isAdmin = ['SUPER_ADMIN', 'ORG_ADMIN'].includes(req.user?.role);
+      const role = req.user?.role;
+      const isAdmin =
+        role != null && ['SUPER_ADMIN', 'ORG_ADMIN'].includes(role);
       
       const updatedUser = await UserService.updateUser(userId, updateData, isAdmin);
       res.status(STATUS_CODES.SUCCESS).json(updatedUser);

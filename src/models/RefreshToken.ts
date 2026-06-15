@@ -7,6 +7,7 @@ export interface IRefreshToken extends Document {
   expiresAt: Date;
   isRevoked: boolean;
   family: string;
+  appId: string;
 }
 
 const refreshTokenSchema = new Schema<IRefreshToken>(
@@ -33,8 +34,13 @@ const refreshTokenSchema = new Schema<IRefreshToken>(
     family: {
       type: String,
       required: true,
-      index: true
-    }
+      index: true,
+    },
+    appId: {
+      type: String,
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );
@@ -42,13 +48,8 @@ const refreshTokenSchema = new Schema<IRefreshToken>(
 // Hash token before saving
 refreshTokenSchema.pre('save', async function (next) {
   if (!this.isModified('token')) return next();
-  
-  this.token = crypto
-    .createHash('sha256')
-    .update(this.token)
-    .digest('hex');
-  
+  this.token = crypto.createHash('sha256').update(this.token).digest('hex');
   next();
 });
 
-export const RefreshToken = mongoose.model<IRefreshToken>('RefreshToken', refreshTokenSchema); 
+export const RefreshToken = mongoose.model<IRefreshToken>('RefreshToken', refreshTokenSchema);
