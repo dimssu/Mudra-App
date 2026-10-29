@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger';
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 
 // Track connection state to avoid log flooding
 let connectionAttempts = 0;
@@ -7,10 +7,15 @@ let isConnected = false;
 let lastErrorLogTime = 0;
 const ERROR_LOG_INTERVAL = 60000; // Log errors at most once per minute
 
-const redisClient = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
+/**
+ * Redis is optional: tokens, rate limits and caches fall back gracefully without it.
+ * REDIS_URL (e.g. a hosted rediss:// URL) takes precedence over REDIS_HOST/PORT/PASSWORD.
+ * When neither is set, commands fail immediately instead of queueing while a
+ * connection to localhost is retried.
+ */
+const redisConfigured = Boolean(process.env.REDIS_URL || process.env.REDIS_HOST);
+
+const redisOptions: RedisOptions = {
   lazyConnect: true, // Don't connect immediately, connect on first command
   maxRetriesPerRequest: 3, // Limit retries per request
   retryStrategy: (times) => {
@@ -39,7 +44,17 @@ const redisClient = new Redis({
     }
     return false;
   },
-});
+  enableOfflineQueue: redisConfigured,
+};
+
+const redisClient = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL, redisOptions)
+  : new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      ...redisOptions,
+    });
 
 redisClient.on('error', (error) => {
   const now = Date.now();

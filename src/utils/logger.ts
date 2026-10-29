@@ -19,18 +19,20 @@ export const logger = winston.createLogger({
     logFormat
   ),
   transports: [
-    new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
-      level: 'error',
-    }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'combined.log'),
-    }),
+    // File logs only where the disk is writable; on Vercel stdout goes to the platform's logs
+    ...(process.env.VERCEL
+      ? []
+      : [
+          new winston.transports.File({
+            filename: path.join(logDir, 'error.log'),
+            level: 'error',
+          }),
+          new winston.transports.File({
+            filename: path.join(logDir, 'combined.log'),
+          }),
+        ]),
     new winston.transports.Console({
-      format: combine(
-        colorize(),
-        logFormat
-      ),
+      format: process.env.VERCEL ? logFormat : combine(colorize(), logFormat),
     }),
   ],
 }); 

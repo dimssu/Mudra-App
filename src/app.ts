@@ -12,8 +12,14 @@ import { validateRegister, validateLogin, validateRefreshToken } from './middlew
 import { AuthController } from './controllers/auth.controller';
 import { loadAppContext } from './middlewares/app-context.middleware';
 import { STATUS_CODES } from './constants/statusCodes';
+import { ensureReady } from './bootstrap';
 
 const app = express();
+
+// Requests arrive through one proxy hop (Vercel's edge, or nginx on a VM).
+// Without this every visitor shares the proxy's IP, so the login rate limit
+// would lock everyone out together.
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
@@ -34,6 +40,12 @@ app.use(express.urlencoded({ extended: true }));
 // Health check — exempt from app context requirement
 app.get('/mudra/health-check', (_req: Request, res: Response) => {
   res.status(STATUS_CODES.SUCCESS).json({ status: 'healthy' });
+});
+
+// Connect to MongoDB and load each app's Firebase credentials before the first
+// request (a no-op after that). Needed on Vercel, where index.ts never runs.
+app.use((_req: Request, _res: Response, next: NextFunction) => {
+  ensureReady().then(() => next(), next);
 });
 
 // Admin routes — registered BEFORE loadAppContext since they use their own API key auth
