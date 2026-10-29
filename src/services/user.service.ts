@@ -1,4 +1,7 @@
 import { User, IUser } from '../models/User';
+import { RefreshToken } from '../models/RefreshToken';
+import { getFirebaseApp } from '../utils/firebase.utils';
+import { logger } from '../utils/logger';
 import { ValidationError, NotFoundError } from '../utils/errors';
 import { RedisCache } from '../utils/redis-cache';
 
@@ -136,14 +139,27 @@ export default class UserService {
   }
 
   // New method to permanently delete a user (for admin purposes)
-  static async permanentlyDeleteUser(userId: string) {
+  static async permanentlyDeleteUser(userId: string, appId?: string) {
     const user = await User.findById(userId);
     if (!user) {
       throw new NotFoundError('User not found');
     }
 
     await User.findByIdAndDelete(userId);
-    
+    await RefreshToken.deleteMany({ userId });
+
+    // Google/Apple users also have a Firebase record holding their email
+    if (user.googleId && appId) {
+      try {
+        await getFirebaseApp(appId).auth().deleteUser(user.googleId);
+      } catch (error) {
+        logger.warn(
+          `Firebase user ${user.googleId} not deleted for app ${appId}: ` +
+          `${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    }
+
     // Remove from cache
     await RedisCache.del(`user:${userId}`);
 

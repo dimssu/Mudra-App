@@ -20,7 +20,7 @@ router.put('/:id', UserController.updateUser);
 // Soft delete user - any user can delete themselves, admins can delete others
 router.delete('/:id', requireRoleOrSelf(['SUPER_ADMIN', 'ORG_ADMIN']), UserController.deleteUser);
 
-// Permanently delete user - only super admins can do this
-router.delete('/:id/permanent', requireRole(['SUPER_ADMIN']), UserController.permanentlyDeleteUser);
+// Permanently delete user - users can erase their own account (App Store / Play rule), super admins can erase anyone
+router.delete('/:id/permanent', requireRoleOrSelf(['SUPER_ADMIN']), UserController.permanentlyDeleteUser);
 
 export default router; 

@@ -67,7 +67,7 @@ export class UserController {
   static async permanentlyDeleteUser(req: Request, res: Response) {
     try {
       const userId = req.params.id;
-      const result = await UserService.permanentlyDeleteUser(userId);
+      const result = await UserService.permanentlyDeleteUser(userId, req.user?.appId);
       res.status(STATUS_CODES.SUCCESS).json(result);
     } catch (error: any) {
       if (error.name === 'NotFoundError') {
